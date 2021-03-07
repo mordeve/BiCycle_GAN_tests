@@ -1,4 +1,6 @@
 import torch
+import base_model
+import networks
 
 class BiCycleGANModel(BaseModel):
     @staticmethod
