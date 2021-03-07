@@ -1,5 +1,5 @@
 import torch
-import base_model
+from base_model import BaseModel
 import networks
 
 class BiCycleGANModel(BaseModel):
