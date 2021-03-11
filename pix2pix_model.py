@@ -3,15 +3,7 @@ from base_model import BaseModel
 import networks
 
 class Pix2PixModel(BaseModel):
-    """ This class implements the pix2pix model, for learning a mapping from input images to output images given paired data.
-
-    The model training requires '--dataset_mode aligned' dataset.
-    By default, it uses a '--netG unet256' U-Net generator,
-    a '--netD basic' discriminator (PatchGAN),
-    and a '--gan_mode' vanilla GAN loss (the cross-entropy objective used in the orignal GAN paper).
-
-    pix2pix paper: https://arxiv.org/pdf/1611.07004.pdf
-    """
+   
     @staticmethod
     def modify_commandline_options(parser, is_train=True):
         """Add new dataset-specific options, and rewrite default values for existing options.
