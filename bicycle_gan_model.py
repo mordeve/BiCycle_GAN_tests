@@ -150,7 +150,7 @@ class BiCycleGANModel(BaseModel):
         # 1, G(A) should fool D
         self.loss_G_GAN = self.backward_G_GAN(self.fake_data_encoded, self.netD, self.opt.lambda_GAN)
         # Third,
-        self.loss_G_MS_SSIM = (1 - self.criterionMSSSIM(self.fake_B, self.real_B, data_range=1, size_average=True)) * self.opt.lambda_MSSSIM
+        self.loss_G_MS_SSIM = (1 - self.criterionMSSSIM(self.fake_B_encoded, self.real_B_encoded, data_range=1, size_average=True)) * self.opt.lambda_MSSSIM
         if self.opt.use_same_D:
             self.loss_G_GAN2 = self.backward_G_GAN(self.fake_data_random, self.netD, self.opt.lambda_GAN2)
         else:
