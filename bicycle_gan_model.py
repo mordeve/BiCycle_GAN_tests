@@ -1,6 +1,7 @@
 import torch
 from base_model import BaseModel
 import networks
+import pytorch_msssim 
 
 class BiCycleGANModel(BaseModel):
     @staticmethod
@@ -13,7 +14,7 @@ class BiCycleGANModel(BaseModel):
 
         BaseModel.__init__(self, opt)
         # specify the training losses you want to print out. The program will call base_model.get_current_losses
-        self.loss_names = ['G_GAN', 'D', 'G_GAN2', 'D2', 'G_L1', 'z_L1', 'kl']
+        self.loss_names = ['G_GAN', 'D', 'G_GAN2', 'D2', 'G_L1', 'z_L1', 'kl', 'G_MS_SSIM']
         # specify the images you want to save/display. The program will call base_model.get_current_visuals
         self.visual_names = ['real_A_encoded', 'real_B_encoded', 'fake_B_random', 'fake_B_encoded']
         # specify the models you want to save to the disk. The program will call base_model.save_networks and base_model.load_networks
@@ -45,6 +46,7 @@ class BiCycleGANModel(BaseModel):
             self.criterionGAN = networks.GANLoss(gan_mode=opt.gan_mode).to(self.device)
             self.criterionL1 = torch.nn.L1Loss()
             self.criterionZ = torch.nn.L1Loss()
+            self.criterionMSSSIM = pytorch_msssim.ms_ssim
             # initialize optimizers
             self.optimizers = []
             self.optimizer_G = torch.optim.Adam(self.netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
@@ -147,6 +149,8 @@ class BiCycleGANModel(BaseModel):
     def backward_EG(self):
         # 1, G(A) should fool D
         self.loss_G_GAN = self.backward_G_GAN(self.fake_data_encoded, self.netD, self.opt.lambda_GAN)
+        # Third,
+        self.loss_G_MS_SSIM = (1 - self.criterionMSSSIM(self.fake_B, self.real_B, data_range=1, size_average=True)) * self.opt.lambda_MSSSIM
         if self.opt.use_same_D:
             self.loss_G_GAN2 = self.backward_G_GAN(self.fake_data_random, self.netD, self.opt.lambda_GAN2)
         else:
@@ -158,7 +162,7 @@ class BiCycleGANModel(BaseModel):
             self.loss_kl = 0
         # 3, reconstruction |fake_B-real_B|
         if self.opt.lambda_L1 > 0.0:
-            self.loss_G_L1 = self.criterionL1(self.fake_B_encoded, self.real_B_encoded) * self.opt.lambda_L1
+            self.loss_G_L1 = self.criterionL1(self.fake_B_encoded, self.real_B_encoded) * self.opt.lambda_L1 + self.loss_G_MS_SSIM
         else:
             self.loss_G_L1 = 0.0
 
