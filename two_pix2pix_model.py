@@ -3,10 +3,10 @@ import os
 import torch
 from collections import OrderedDict
 from torch.autograd import Variable
-import util.util as util
-from util.image_pool import ImagePool
-from .pix2pix_model import Pix2PixModel
-from . import networks
+import util
+from image_pool import ImagePool
+import Pix2PixModel
+
 
 
 class TwoPix2PixModel:
