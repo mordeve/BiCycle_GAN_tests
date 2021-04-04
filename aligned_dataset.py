@@ -2,6 +2,7 @@ import os.path
 from base_dataset import BaseDataset, get_params, get_transform
 from image_folder import make_dataset
 from PIL import Image
+import numpy as np
 
 
 class AlignedDataset(BaseDataset):
@@ -41,6 +42,10 @@ class AlignedDataset(BaseDataset):
         AB = Image.open(AB_path).convert('RGB')
         # split AB image into A and B
         w, h = AB.size
+        if w != 2*h:
+            AB = np.hstack((AB, AB))
+            AB = Image.fromarray(AB, 'RGB')
+            w, h = AB.size
         w2 = int(w / 2)
         A = AB.crop((0, 0, w2, h))
         B = AB.crop((w2, 0, w, h))
