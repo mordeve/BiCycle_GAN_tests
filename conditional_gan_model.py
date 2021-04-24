@@ -4,6 +4,7 @@ import os
 from collections import OrderedDict
 from torch.autograd import Variable
 import pytorch_msssim
+from base_model import BaseModel
 
 try:
 	xrange          # Python2
