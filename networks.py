@@ -119,7 +119,7 @@ def get_non_linearity(layer_type='relu'):
 
 def define_G(input_nc, output_nc, nz, ngf, netG='unet_128', norm='batch', nl='relu',
              use_dropout=False, init_type='xavier', init_gain=0.02, gpu_ids=[], where_add='input', upsample='bilinear',
-             use_parallel=True, learn_residual=False):
+             use_parallel=True, learn_residual=True, vaeLike=False):
     net = None
     norm_layer = get_norm_layer(norm_type=norm)
     nl_layer = get_non_linearity(layer_type=nl)
@@ -130,7 +130,7 @@ def define_G(input_nc, output_nc, nz, ngf, netG='unet_128', norm='batch', nl='re
 
     if netG == 'unet_128' and where_add == 'input':
         net = G_Unet_add_input(input_nc, output_nc, nz, 7, ngf, norm_layer=norm_layer, nl_layer=nl_layer,
-                               use_dropout=use_dropout, upsample=upsample, vaeLike=False)
+                               use_dropout=use_dropout, upsample=upsample)
     elif netG == 'resnet_256':
         net = E_ResNet(input_nc, output_nc, ndf, n_blocks=5, norm_layer=norm_layer,
                        nl_layer=nl_layer, vaeLike=vaeLike)
