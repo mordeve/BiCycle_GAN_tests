@@ -21,12 +21,6 @@ class Pix2PixModel(BaseModel):
         By default, we use vanilla GAN loss, UNet with batchnorm, and aligned datasets.
         """
         # changing the default values to match the pix2pix paper (https://phillipi.github.io/pix2pix/)
-        parser.set_defaults(norm='instance', netG='resnet_9blocks', dataset_mode='aligned')
-        parser.set_defaults(where_add='input', nz=0)
-        if is_train:
-            parser.set_defaults(gan_mode='vanilla', lambda_l1=100.0)
-
-        return parser
 
     def __init__(self, opt):
         """Initialize the pix2pix class.
