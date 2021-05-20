@@ -25,7 +25,7 @@ class BiCycleGANModel(BaseModel):
         self.model_names = ['G']
         self.netG = networks.define_G(opt.input_nc, opt.output_nc, opt.nz, opt.ngf, netG=opt.netG,
                                       norm=opt.norm, nl=opt.nl, use_dropout=opt.use_dropout, init_type=opt.init_type, init_gain=opt.init_gain,
-                                      gpu_ids=self.gpu_ids, where_add=opt.where_add, upsample=opt.upsample)
+                                      gpu_ids=self.gpu_ids, where_add=opt.where_add, upsample=opt.upsample, learn_residual=opt.learn_residual)
         D_output_nc = opt.input_nc + opt.output_nc if opt.conditional_D else opt.output_nc
         if use_D:
             self.model_names += ['D']
