@@ -132,7 +132,7 @@ def define_G(input_nc, output_nc, nz, ngf, netG='unet_128', norm='batch', nl='re
         net = G_Unet_add_input(input_nc, output_nc, nz, 7, ngf, norm_layer=norm_layer, nl_layer=nl_layer,
                                use_dropout=use_dropout, upsample=upsample)
     elif netG == 'resnet_256':
-        net = E_ResNet(input_nc, output_nc, ndf, n_blocks=5, norm_layer=norm_layer,
+        net = E_ResNet(input_nc, output_nc, ndf=64, n_blocks=5, norm_layer=norm_layer,
                        nl_layer=nl_layer, vaeLike=vaeLike)
 	
     elif netG == 'resnet_9blocks':
