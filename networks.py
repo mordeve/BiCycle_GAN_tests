@@ -131,6 +131,10 @@ def define_G(input_nc, output_nc, nz, ngf, netG='unet_128', norm='batch', nl='re
     if netG == 'unet_128' and where_add == 'input':
         net = G_Unet_add_input(input_nc, output_nc, nz, 7, ngf, norm_layer=norm_layer, nl_layer=nl_layer,
                                use_dropout=use_dropout, upsample=upsample)
+    elif netG == 'resnet_256':
+        net = E_ResNet(input_nc, output_nc, ndf, n_blocks=5, norm_layer=norm_layer,
+                       nl_layer=nl_layer, vaeLike=vaeLike)
+	
     elif netG == 'resnet_9blocks':
         net = ResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=9, 
                                 gpu_ids=gpu_ids, use_parallel=use_parallel, learn_residual=learn_residual)
