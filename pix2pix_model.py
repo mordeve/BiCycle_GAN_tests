@@ -24,7 +24,7 @@ class Pix2PixModel(BaseModel):
         parser.set_defaults(norm='instance', dataset_mode='aligned')
         parser.set_defaults(where_add='input', nz=0)
         if is_train:
-            parser.set_defaults(gan_mode='lsgan', lambda_l1=100.0)
+            parser.set_defaults(gan_mode='vanilla', lambda_l1=100.0)
 
         return parser
    
