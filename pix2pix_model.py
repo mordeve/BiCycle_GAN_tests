@@ -21,13 +21,13 @@ class Pix2PixModel(BaseModel):
         By default, we use vanilla GAN loss, UNet with batchnorm, and aligned datasets.
         """
         # changing the default values to match the pix2pix paper (https://phillipi.github.io/pix2pix/)
-        parser.set_defaults(norm='instance', dataset_mode='aligned')
+        parser.set_defaults(norm='batch', netG='unet_256', dataset_mode='aligned')
         parser.set_defaults(where_add='input', nz=0)
         if is_train:
             parser.set_defaults(gan_mode='vanilla', lambda_l1=100.0)
 
         return parser
-   
+
     def __init__(self, opt):
         """Initialize the pix2pix class.
 
@@ -47,7 +47,7 @@ class Pix2PixModel(BaseModel):
         # define networks (both generator and discriminator)
         self.netG = networks.define_G(opt.input_nc, opt.output_nc, opt.nz, opt.ngf, netG=opt.netG,
                                       norm=opt.norm, nl=opt.nl, use_dropout=opt.use_dropout, init_type=opt.init_type, init_gain=opt.init_gain,
-                                      gpu_ids=self.gpu_ids, where_add=opt.where_add, upsample=opt.upsample, learn_residual=opt.learn_residual)
+                                      gpu_ids=self.gpu_ids, where_add=opt.where_add, upsample=opt.upsample)
 
         if self.isTrain:  # define a discriminator; conditional GANs need to take both input and output images; Therefore, #channels for D is input_nc + output_nc
             self.netD = networks.define_D(opt.input_nc + opt.output_nc, opt.ndf, netD=opt.netD2, norm=opt.norm, nl=opt.nl,
@@ -121,6 +121,3 @@ class Pix2PixModel(BaseModel):
         self.optimizer_G.zero_grad()        # set G's gradients to zero
         self.backward_G()                   # calculate graidents for G
         self.optimizer_G.step()             # udpate G's weights
-         
-    def named_params():
-      return self.named_parameters()
