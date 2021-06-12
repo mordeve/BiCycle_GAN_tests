@@ -118,12 +118,10 @@ def get_non_linearity(layer_type='relu'):
 
 
 def define_G(input_nc, output_nc, nz, ngf, netG='unet_128', norm='batch', nl='relu',
-             use_dropout=False, init_type='xavier', init_gain=0.02, gpu_ids=[], where_add='input', upsample='bilinear',
-             use_parallel=True, learn_residual=True, vaeLike=False, ndf=64):
+             use_dropout=False, init_type='xavier', init_gain=0.02, gpu_ids=[], where_add='input', upsample='bilinear'):
     net = None
     norm_layer = get_norm_layer(norm_type=norm)
     nl_layer = get_non_linearity(layer_type=nl)
-
 
     if nz == 0:
         where_add = 'input'
@@ -131,13 +129,6 @@ def define_G(input_nc, output_nc, nz, ngf, netG='unet_128', norm='batch', nl='re
     if netG == 'unet_128' and where_add == 'input':
         net = G_Unet_add_input(input_nc, output_nc, nz, 7, ngf, norm_layer=norm_layer, nl_layer=nl_layer,
                                use_dropout=use_dropout, upsample=upsample)
-    elif netG == 'resnet_256':
-        net = E_ResNet(input_nc, output_nc, ndf, n_blocks=5, norm_layer=norm_layer,
-                       nl_layer=nl_layer, vaeLike=vaeLike)
-	
-    elif netG == 'resnet_9blocks':
-        net = ResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=9, 
-                                gpu_ids=gpu_ids, use_parallel=use_parallel, learn_residual=learn_residual)
     elif netG == 'unet_256' and where_add == 'input':
         net = G_Unet_add_input(input_nc, output_nc, nz, 8, ngf, norm_layer=norm_layer, nl_layer=nl_layer,
                                use_dropout=use_dropout, upsample=upsample)
@@ -311,202 +302,6 @@ class D_NLayers(nn.Module):
 ##############################################################################
 # Classes
 ##############################################################################
-
-# Defines the generator that consists of Resnet blocks between a few
-# downsampling/upsampling operations.
-# Code and idea originally from Justin Johnson's architecture.
-# https://github.com/jcjohnson/fast-neural-style/
-class ResnetGenerator(nn.Module):
-    def __init__(
-            self, input_nc, output_nc, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False,
-            n_blocks=6, gpu_ids=[], use_parallel=True, learn_residual=False, padding_type='reflect'):
-        assert (n_blocks >= 0)
-        super(ResnetGenerator, self).__init__()
-        self.input_nc = input_nc
-        self.output_nc = output_nc
-        self.ngf = ngf
-        self.gpu_ids = gpu_ids
-        self.use_parallel = use_parallel
-        self.learn_residual = learn_residual
-
-        if type(norm_layer) == functools.partial:
-            use_bias = norm_layer.func == nn.InstanceNorm2d
-        else:
-            use_bias = norm_layer == nn.InstanceNorm2d
-
-        model = [
-            nn.ReflectionPad2d(3),
-            nn.Conv2d(input_nc, ngf, kernel_size=7, padding=0, bias=use_bias),
-            norm_layer(ngf),
-            nn.ReLU(True)
-        ]
-
-        n_downsampling = 2
-
-        # 下采样
-        # for i in range(n_downsampling): # [0,1]
-        # 	mult = 2**i
-        #
-        # 	model += [
-        # 		nn.Conv2d(ngf * mult, ngf * mult * 2, kernel_size=3, stride=2, padding=1, bias=use_bias),
-        # 		norm_layer(ngf * mult * 2),
-        # 		nn.ReLU(True)
-        # 	]
-
-        model += [
-            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1, bias=use_bias),
-            norm_layer(128),
-            nn.ReLU(True),
-
-            nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1, bias=use_bias),
-            norm_layer(256),
-            nn.ReLU(True)
-        ]
-
-        # 中间的残差网络
-        # mult = 2**n_downsampling
-        for i in range(n_blocks):
-            # model += [
-            # 	ResnetBlock(
-            # 		ngf * mult, padding_type=padding_type, norm_layer=norm_layer,
-            # 		use_dropout=use_dropout, use_bias=use_bias)
-            # ]
-            model += [
-                ResnetBlock(256, padding_type=padding_type, norm_layer=norm_layer, use_dropout=use_dropout, use_bias=use_bias)
-            ]
-
-        # 上采样
-        # for i in range(n_downsampling):
-        # 	mult = 2**(n_downsampling - i)
-        #
-        # 	model += [
-        # 		nn.ConvTranspose2d(
-        # 			ngf * mult, int(ngf * mult / 2), kernel_size=3, stride=2,
-        # 			padding=1, output_padding=1, bias=use_bias),
-        # 		norm_layer(int(ngf * mult / 2)),
-        # 		nn.ReLU(True)
-        # 	]
-        model += [
-            nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1, bias=use_bias),
-            norm_layer(128),
-            nn.ReLU(True),
-
-            nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1, bias=use_bias),
-            norm_layer(64),
-            nn.ReLU(True),
-        ]
-
-        model += [
-            nn.ReflectionPad2d(3),
-            nn.Conv2d(64, output_nc, kernel_size=7, padding=0),
-            nn.Tanh()
-        ]
-
-        self.model = nn.Sequential(*model)
-
-    def forward(self, input):
-        if self.gpu_ids and isinstance(input.data, torch.cuda.FloatTensor) and self.use_parallel:
-            output = nn.parallel.data_parallel(self.model, input, self.gpu_ids)
-        else:
-            output = self.model(input)
-        if self.learn_residual:
-            # output = input + output
-            output = torch.clamp(input + output, min=-1, max=1)
-        return output
-
-
-# Define a resnet block
-class ResnetBlock(nn.Module):
-
-	def __init__(self, dim, padding_type, norm_layer, use_dropout, use_bias):
-		super(ResnetBlock, self).__init__()
-
-		padAndConv = {
-			'reflect': [
-                nn.ReflectionPad2d(1),
-                nn.Conv2d(dim, dim, kernel_size=3, bias=use_bias)],
-			'replicate': [
-                nn.ReplicationPad2d(1),
-                nn.Conv2d(dim, dim, kernel_size=3, bias=use_bias)],
-			'zero': [
-                nn.Conv2d(dim, dim, kernel_size=3, padding=1, bias=use_bias)]
-		}
-
-		try:
-			blocks = padAndConv[padding_type] + [
-				norm_layer(dim),
-				nn.ReLU(True)
-            ] + [
-				nn.Dropout(0.5)
-			] if use_dropout else [] + padAndConv[padding_type] + [
-				norm_layer(dim)
-			]
-		except:
-			raise NotImplementedError('padding [%s] is not implemented' % padding_type)
-
-		self.conv_block = nn.Sequential(*blocks)
-
-		# self.conv_block = self.build_conv_block(dim, padding_type, norm_layer, use_dropout, use_bias)
-		# def build_conv_block(self, dim, padding_type, norm_layer, use_dropout, use_bias):
-		#     padAndConv = {
-		#         'reflect': [nn.ReflectionPad2d(1), nn.Conv2d(dim, dim, kernel_size=3, bias=use_bias)],
-		#         'replicate': [nn.ReplicationPad2d(1), nn.Conv2d(dim, dim, kernel_size=3, bias=use_bias)],
-		#         'zero': [nn.Conv2d(dim, dim, kernel_size=3, padding=1, bias=use_bias)]
-		#     }
-		#     try:
-		#         blocks = [
-		#             padAndConv[padding_type],
-		#
-		#             norm_layer(dim),
-		#             nn.ReLU(True),
-		#             nn.Dropout(0.5) if use_dropout else None,
-		#
-		#             padAndConv[padding_type],
-		#
-		#             norm_layer(dim)
-		#         ]
-		#     except:
-		#         raise NotImplementedError('padding [%s] is not implemented' % padding_type)
-		#
-		#     return nn.Sequential(*blocks)
-
-		# blocks = []
-		# if padding_type == 'reflect':
-		# 	blocks += [nn.ReflectionPad2d(1),  nn.Conv2d(dim, dim, kernel_size=3, bias=use_bias)]
-		# elif padding_type == 'replicate':
-		# 	blocks += [nn.ReplicationPad2d(1), nn.Conv2d(dim, dim, kernel_size=3, bias=use_bias)]
-		# elif padding_type == 'zero':
-		# 	blocks += [nn.Conv2d(dim, dim, kernel_size=3, padding=1, bias=use_bias)]
-		# else:
-		# 	raise NotImplementedError('padding [%s] is not implemented' % padding_type)
-		#
-		# blocks += [
-		# 	norm_layer(dim),
-		# 	nn.ReLU(True),
-		# 	nn.Dropout(0.5) if use_dropout else None
-		# ]
-		#
-		# if padding_type == 'reflect':
-		# 	blocks += [nn.ReflectionPad2d(1),  nn.Conv2d(dim, dim, kernel_size=3, bias=use_bias)]
-		# elif padding_type == 'replicate':
-		# 	blocks += [nn.ReplicationPad2d(1), nn.Conv2d(dim, dim, kernel_size=3, bias=use_bias)]
-		# elif padding_type == 'zero':
-		# 	blocks += [nn.Conv2d(dim, dim, kernel_size=3, padding=1, bias=use_bias)]
-		# else:
-		# 	raise NotImplementedError('padding [%s] is not implemented' % padding_type)
-		#
-		# blocks += [
-		# 	norm_layer(dim)
-		# ]
-		#
-		# return nn.Sequential(*blocks)
-
-	def forward(self, x):
-		out = x + self.conv_block(x)
-		return out
-
-
-
 class RecLoss(nn.Module):
     def __init__(self, use_L2=True):
         super(RecLoss, self).__init__()
